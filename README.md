@@ -15,7 +15,7 @@ Develop, test, and compile apps for the Chaturbate App v2 platform, all locally.
 Chaturbate-AppV2-DevKit provides a streamlined solution to develop apps for the Chaturbate App v2 platform using the v0.35.0 API. Write and test with TypeScript, then compile to JavaScript for deployment.
 
 ## Features
-- ✅ TypeScript integration with Babel.
+- ✅ TypeScript integration with Babel. Enhanced with a custom Babel plugin for optimized bundling, tailored for the Chaturbate App v2 platform. [See detailed mechanics](./PLUGIN-DOCS.md).
 - ✅ Seamless TypeScript-to-JavaScript compilation, Chaturbate-ready.
 - ✅ Local API definitions and docs for Chaturbate App v2.
 - ✅ AVA-powered unit testing with TSC and proxyquire.
@@ -55,6 +55,8 @@ test('sample test', t => {
 
 ## Compiling
 Babel facilitates the TypeScript-to-JavaScript compilation. Once compiled, retrieve the JavaScript from the `dist` directory, ready for the Chaturbate App v2 IDE.
+
+For a deeper understanding of the custom Babel plugin used in this development kit, please refer to the [detailed plugin documentation](./PLUGIN-DOCS.md).
 
 ## REPL
 Plans are underway to introduce a REPL console for local app testing, with a simulation of the Chaturbate App v2 platform's experience using the v0.35.0 API.
