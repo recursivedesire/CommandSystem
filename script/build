@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Clearing the dist folder
+rm -rf dist
+
+# Compiling each file listed in apiFiles.txt
+files=(
+    "sharedCode"
+    "appSettingsChange"
+    "appStart"
+    "appStop"
+    "broadcastStart"
+    "broadcastStop"
+    "broadcastPanelUpdate"
+    "callback"
+    "chatMessage"
+    "chatMessageTransform"
+    "fanclubJoin"
+    "mediaPurchase"
+    "roomStatusChange"
+    "tipDialogOpen"
+    "tipReceived"
+    "userEnter"
+    "userFollow"
+    "userLeave"
+    "userUnfollow"
+)
+printf "src/%s.ts\n" "${files[@]}" | xargs npx babel --out-dir dist --extensions '.ts'
