@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const babelParser = require('@babel/parser');
+const babelTransform = require("@babel/core").transform;
 
 module.exports = function (babel) {
     const { types: t } = babel;
@@ -11,21 +12,36 @@ module.exports = function (babel) {
 
         // Try with the inferred extension if the file doesn't exist initially
         if (!fs.existsSync(absolutePath)) {
-            absolutePath = `${absolutePath}${currentFileExtension}`;
+            if (fs.existsSync(`${absolutePath}${currentFileExtension}`)) {
+                absolutePath = `${absolutePath}${currentFileExtension}`;
+            } else if (fs.existsSync(`${absolutePath}.ts`)) {
+                absolutePath = `${absolutePath}.ts`;
+            } else if (fs.existsSync(`${absolutePath}.js`)) {
+                absolutePath = `${absolutePath}.js`;
+            }
         }
 
         try {
             const fileContent = fs.readFileSync(absolutePath, 'utf8');
-            const ast = babelParser.parse(fileContent, {
-                sourceType: "module"
+            const transformed = babelTransform(fileContent, {
+                sourceType: "module",
+                plugins: [["@babel/plugin-syntax-typescript", { isTSX: false }], "./devportal-compat-plugin"]
             });
-            return ast.program.body;
+
+            if (transformed && transformed.code) {
+                return babelParser.parse(transformed.code, {
+                    sourceType: "module",
+                    plugins: ["typescript"]
+                }).program.body;
+            } else {
+                console.error(`Error transforming inlined file content for path ${absolutePath}`);
+                return [];
+            }
         } catch (error) {
             console.error(`Error inlining file content for path ${absolutePath}`, error);
             return [];
         }
     }
-
 
     return {
         name: "devportal-compat-plugin",
@@ -33,16 +49,16 @@ module.exports = function (babel) {
             Program: {
                 enter(path, state) {
                     state.inlineImports = [];
+                    state.fullInlines = [];  // New state to hold the full inlines
                     state.nodesToBeRemoved = [];
 
                     path.traverse({
                         ImportDeclaration(innerPath) {
                             const importPath = innerPath.node.source.value;
 
-                            // Check if the import has no specifiers and inline the file content
+                            // Check if the import has no specifiers and save for later
                             if (innerPath.node.specifiers.length === 0) {
-                                const inlinedContent = inlineFileContent(importPath, state.file.opts.filename);
-                                innerPath.replaceWithMultiple(inlinedContent);
+                                state.fullInlines.push({ path: importPath, nodePath: innerPath });
                                 return; // Skip the rest of the code for this import
                             }
 
@@ -103,6 +119,16 @@ module.exports = function (babel) {
                         }
                     });
 
+                    // Process full inlines
+                    state.fullInlines.forEach(inline => {
+                        const inlinedContent = inlineFileContent(inline.path, state.file.opts.filename);
+                        if (inlinedContent && inlinedContent.length > 0) {
+                            inline.nodePath.replaceWithMultiple(inlinedContent);
+                        } else {
+                            state.nodesToBeRemoved.push(inline.nodePath);
+                        }
+                    });
+
                     // Remove nodes in the removal list
                     state.nodesToBeRemoved.forEach(nodePath => {
                         if (nodePath && !nodePath.removed) {
@@ -114,3 +140,4 @@ module.exports = function (babel) {
         }
     };
 };
+
