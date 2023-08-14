@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const babelParser = require('@babel/parser');
+const babelTransform = require("@babel/core").transform;
 
 module.exports = function (babel) {
     const { types: t } = babel;
@@ -22,11 +23,20 @@ module.exports = function (babel) {
 
         try {
             const fileContent = fs.readFileSync(absolutePath, 'utf8');
-            const ast = babelParser.parse(fileContent, {
+            const transformed = babelTransform(fileContent, {
                 sourceType: "module",
-                plugins: ["typescript"]
+                plugins: [["@babel/plugin-syntax-typescript", { isTSX: false }], "./devportal-compat-plugin"]
             });
-            return ast.program.body;
+
+            if (transformed && transformed.code) {
+                return babelParser.parse(transformed.code, {
+                    sourceType: "module",
+                    plugins: ["typescript"]
+                }).program.body;
+            } else {
+                console.error(`Error transforming inlined file content for path ${absolutePath}`);
+                return [];
+            }
         } catch (error) {
             console.error(`Error inlining file content for path ${absolutePath}`, error);
             return [];
