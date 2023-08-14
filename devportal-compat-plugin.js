@@ -1,5 +1,5 @@
 const fs = require('fs');
-const path = require('path');
+const nodePath = require('path');
 const babelParser = require('@babel/parser');
 const babelTransform = require("@babel/core").transform;
 
@@ -7,8 +7,8 @@ module.exports = function (babel) {
     const { types: t } = babel;
 
     function inlineFileContent(filePath, relativeTo) {
-        const currentFileExtension = path.extname(relativeTo);
-        let absolutePath = path.resolve(path.dirname(relativeTo), filePath);
+        const currentFileExtension = nodePath.extname(relativeTo);
+        let absolutePath = nodePath.resolve(nodePath.dirname(relativeTo), filePath);
 
         // Try with the inferred extension if the file doesn't exist initially
         if (!fs.existsSync(absolutePath)) {
@@ -88,34 +88,61 @@ module.exports = function (babel) {
                     });
                 },
                 exit(path, state) {
-                    let inlineFunctionInserted = false;
+                    let inlinedPartsFromModules = new Map();
 
                     // Make replacements
                     state.inlineImports.forEach(inlineImport => {
-                        // Mark the import for removal
-                        state.nodesToBeRemoved.push(inlineImport.path);
+                        if (!inlineImport.path.node) return;
 
-                        // Replace function calls
-                        path.traverse({
-                            CallExpression(innerPath) {
-                                if (innerPath.node.callee.name === inlineImport.localName) {
-                                    innerPath.replaceWith(t.callExpression(t.identifier('inlineTestFunction'), []));
-                                }
+                        // Get the path of the imported file
+                        const importPath = inlineImport.path.node.source.value;
+                        const fullInlinedContent = inlineFileContent(importPath, state.file.opts.filename);
+
+                        if (fullInlinedContent && fullInlinedContent.length > 0) {
+                            const importedNames = inlineImport.path.node.specifiers.map(specifier => specifier.imported.name);
+
+                            if (!inlinedPartsFromModules.has(importPath)) {
+                                inlinedPartsFromModules.set(importPath, new Set());
                             }
-                        });
 
-                        // Insert the inlined function, but ensure it's added only once
-                        if (!inlineFunctionInserted) {
-                            path.node.body.unshift(
-                                t.functionDeclaration(
-                                    t.identifier('inlineTestFunction'),
-                                    [],
-                                    t.blockStatement([
-                                        t.expressionStatement(t.callExpression(t.identifier('console.log'), [t.stringLiteral('inline-test')]))
-                                    ])
-                                )
-                            );
-                            inlineFunctionInserted = true;
+                            const alreadyInlinedParts = inlinedPartsFromModules.get(importPath);
+                            const partsToInline = importedNames.filter(name => !alreadyInlinedParts.has(name));
+
+                            if (partsToInline.length > 0) {
+                                const relevantInlinedContent = fullInlinedContent.filter(node => {
+                                    if (t.isVariableDeclaration(node)) {
+                                        return node.declarations.some(declaration => partsToInline.includes(declaration.id.name));
+                                    } else if (t.isFunctionDeclaration(node) || t.isClassDeclaration(node)) {
+                                        return partsToInline.includes(node.id.name);
+                                    }
+                                    return false;
+                                });
+
+                                const filename = nodePath.basename(importPath).replace(/\./g, "_");
+
+                                const nameMapping = {};
+                                relevantInlinedContent.forEach(node => {
+                                    if (node.id && typeof node.id.name === 'string') {
+                                        const oldName = node.id.name;
+                                        const newName = `${filename}_${oldName}`;
+                                        node.id.name = newName;
+                                        nameMapping[oldName] = newName;
+                                    }
+                                });
+
+                                path.traverse({
+                                    Identifier(identifierPath) {
+                                        if (nameMapping[identifierPath.node.name]) {
+                                            identifierPath.node.name = nameMapping[identifierPath.node.name];
+                                        }
+                                    }
+                                });
+
+                                inlineImport.path.replaceWithMultiple(relevantInlinedContent);
+                                partsToInline.forEach(part => alreadyInlinedParts.add(part));
+                            } else {
+                                state.nodesToBeRemoved.push(inlineImport.path);
+                            }
                         }
                     });
 
