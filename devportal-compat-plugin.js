@@ -23,7 +23,8 @@ module.exports = function (babel) {
         try {
             const fileContent = fs.readFileSync(absolutePath, 'utf8');
             const ast = babelParser.parse(fileContent, {
-                sourceType: "module"
+                sourceType: "module",
+                plugins: ["typescript"]
             });
             return ast.program.body;
         } catch (error) {
