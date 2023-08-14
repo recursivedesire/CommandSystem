@@ -1,65 +1,196 @@
-# Chaturbate-AppV2-DevKit
-Develop, test, and compile apps for the Chaturbate App v2 platform, all locally.
+# Command System
+
+A showcase of modular command management, parsing, and execution. Every piece of this repo is designed to demonstrate the Command System's full integration with the Chaturbate API, exposing every functionality to users.
 
 ## Table of Contents
-- [Introduction](#introduction)
 - [Features](#features)
-- [Getting Started](#getting-started)
-- [API](#api)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Basic Usage](#basic-usage)
+  - [Advanced Usage](#advanced-usage)
+  - [Error Handling](#error-handling)
 - [Testing](#testing)
-- [Compiling](#compiling)
-- [REPL](#repl)
-- [Contribution](#contribution)
-
-## Introduction
-Chaturbate-AppV2-DevKit provides a streamlined solution to develop apps for the Chaturbate App v2 platform using the v0.35.0 API. Write and test with TypeScript, then compile to JavaScript for deployment.
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
-- ✅ TypeScript integration with Babel. Enhanced with a custom Babel plugin for optimized bundling, tailored for the Chaturbate App v2 platform. [See detailed mechanics](./PLUGIN-DOCS.md).
-- ✅ Seamless TypeScript-to-JavaScript compilation, Chaturbate-ready.
-- ✅ Local API definitions and docs for Chaturbate App v2.
-- ✅ AVA-powered unit testing with TSC and proxyquire.
-- 🔄 Coming Soon: REPL console for hassle-free app testing.
+- Dynamic command registration.
+- Permission-based command execution.
+- Command parsing with arguments and options.
+- Extendable with new commands or command systems.
+- Built-in error handling and validation.
 
-## Getting Started
-1. Clone this repository: `git clone <repo-url>`.
-2. Install dependencies: `npm install`.
-3. Begin development in the `src` directory.
-4. Run tests: `npm test`.
-5. Compile: `npm run build`.
-6. Deploy: Copy the output from `dist` to the Chaturbate App v2 IDE.
+## Installation
+To use it directly in the Chaturbate App v2 IDE, just copy the content of a minified javascript release.
+If you want to compile it on your own run:
 
-## API
-Discover the Chaturbate App v2 API (v0.35.0) in the `src/api` folder. It’s documented with JSDoc and structured with TypeScript interfaces. While it isn’t implemented, it's primed for testing with proxyquire mock objects.
-
-## Testing
-For now, TypeScript tests should be placed in the `src` directory. Flexible variable exports per event handler enable adaptive testing. Tests are executed using AVA and TSC. Start with `npm test`.
-
-```typescript
-import test from 'ava';
-import proxyquire from "proxyquire";
-import {Message} from "./api/$message";
-
-const mockMessage: Message = {
-    body: "Hello, world!",
-    // ...
-};
-
-test('sample test', t => {
-    const chatMessage = proxyquire('./chatMessage', {
-        './api/$message': mockMessage,
-    });
-    t.is(chatMessage.$message.body, mockMessage.body);
-});
+```bash
+git clone <repo-url>
+npm install
+npm run build
 ```
 
-## Compiling
-Babel facilitates the TypeScript-to-JavaScript compilation. Once compiled, retrieve the JavaScript from the `dist` directory, ready for the Chaturbate App v2 IDE.
+## Usage
 
-For a deeper understanding of the custom Babel plugin used in this development kit, please refer to the [detailed plugin documentation](./PLUGIN-DOCS.md).
+### Basic Usage
 
-## REPL
-Plans are underway to introduce a REPL console for local app testing, with a simulation of the Chaturbate App v2 platform's experience using the v0.35.0 API.
+#### 1. **Creating a Command**
+Here's how you can define a simple command:
 
-## Contribution
+```typescript
+import { Command } from 'path-to-command-system';
+
+const greetCommand = new Command(
+    "greet",
+    "Greets a user",
+    [],
+    (args) => ({ success: true, message: `Hello, ${args.name}!` }),
+    [new Parameter('name', 'User')]  // Name with default 'User'
+);
+```
+
+#### 2. **Registering a Command**
+Commands need to be registered to a command system:
+
+```typescript
+import { CommandSystem } from 'path-to-command-system';
+
+const CS = new CommandSystem("MySystem");
+CS.register(greetCommand);
+```
+
+#### 3. **Using the Help Command**
+The system automatically includes a 'help' command:
+
+```typescript
+console.log(CS.execute("MySystem help").message); // Lists available commands
+console.log(CS.execute("MySystem help greet").message); // Details about 'greet' command
+```
+
+### Advanced Usage
+
+#### 1. **Command with Options**
+Commands can have options, which are preceded by a `-`:
+
+```typescript
+const greetWithMoodCommand = new Command(
+    "greetWithMood",
+    "Greets a user with a mood",
+    [],
+    (args, opts) => {
+        let mood = opts.mood || "happy";
+        return { success: true, message: `Hello, ${args.name}! You seem ${mood} today.` };
+    },
+    [new Parameter('name', 'User')],
+    [new Parameter('mood')]
+);
+```
+
+Usage:
+
+```typescript
+console.log(CS.execute("MySystem greetWithMood John -mood excited").message);
+// Expected output: "Hello, John! You seem excited today."
+```
+
+#### 2. **Nested Command Systems**
+Command Systems can be nested:
+
+```typescript
+const innerSystem = new CommandSystem("inner");
+innerSystem.register(greetCommand);
+
+const outerSystem = new CommandSystem("outer");
+outerSystem.register(innerSystem);
+
+console.log(outerSystem.execute("outer inner greet John").message);
+// Expected output: "Hello, John!"
+```
+
+### Executing Commands
+Executing commands involves parsing a command string followed by its execution.
+
+#### 1. **Parsing and Executing Command Strings**
+To execute a command from a raw string, you first need to parse the string. After parsing, the command can be executed.
+
+```typescript
+const CS = new CommandSystem("MySystem");
+const greetCommand = new Command(
+    "greet",
+    "Greets a user",
+    [],
+    (args) => ({ success: true, message: `Hello, ${args.name}!` }),
+    [new Parameter('name', 'User')]  // Name with default 'User'
+);
+CS.register(greetCommand);
+
+const commandString = "MySystem greet John";
+
+// Parse the command
+const parsedCommand = CS.parse(commandString);
+
+// Check if the command is valid and execute
+if (parsedCommand.valid) {
+    const result = CS.execute(parsedCommand);
+    console.log(result.message);  // Expected output: "Hello, John!"
+} else {
+    console.error(parsedCommand.error);
+}
+```
+
+#### 2. **Short-cut: Directly Executing from a String**
+For a quicker approach:
+
+```typescript
+const quickResult = CS.execute("MySystem greet Jane");
+console.log(quickResult.message);  // Expected output: "Hello, Jane!"
+```
+
+Note: Using this method, if there's an error in the command, the `execute` function will handle it and return an error message in the result.
+
+### Error Handling
+
+Dealing with errors is essential to provide a user-friendly experience. The Command System has built-in error handling mechanisms to ensure that users are always informed about what went wrong and developers can effectively debug issues.
+
+#### 1. **Parsing Errors**
+
+When parsing a command string, it's possible that the provided string is malformed or doesn't match any registered command. In such cases, the `parse` function returns an object with a `valid` flag set to `false` and an `error` message detailing the problem.
+
+```typescript
+const parsedCommand = CS.parse("MySystem greetWithoutRegistering");
+if (!parsedCommand.valid) {
+    console.error(`Parsing Error: ${parsedCommand.error}`);
+}
+```
+
+#### 2. **Execution Errors**
+
+Even if a command string is correctly parsed, there might be issues during execution. These could arise due to issues in the command's logic or other runtime problems. Execution errors are included in the result returned by the `execute` function.
+
+```typescript
+const result = CS.execute("MySystem greet");
+if (!result.success) {
+    console.error(`Execution Error: ${result.message}`);
+}
+```
+
+#### 3. **Parameter and Option Errors**
+
+Commands can expect certain parameters or options. If these are missing or invalid, errors are generated. These are handled similarly to parsing errors and are included in the result object.
+
+```typescript
+const result = CS.execute("MySystem greetWithMood John");
+if (!result.success) {
+    console.error(`Parameter Error: ${result.message}`);
+}
+```
+
+## Testing
+To ensure the reliability of the Command System, we have a comprehensive test suite. 
+
+```bash
+npm run test
+```
+
+## Contributing
 All forms of contributions are welcome! If you have improvements, ideas, or would like to collaborate, please open an issue or submit a pull request. Any feedback or assistance is highly valued.
