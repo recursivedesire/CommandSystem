@@ -24,5 +24,7 @@ files=(
     "userFollow"
     "userLeave"
     "userUnfollow"
+    "CommandSystem"
 )
 printf "src/%s.ts\n" "${files[@]}" | xargs npx babel --out-dir dist --extensions '.ts'
+npx terser dist/CommandSystem.js -o dist/CommandSystem.min.js -c drop_debugger,keep_fargs,sequences -m keep_classnames,keep_fnames
