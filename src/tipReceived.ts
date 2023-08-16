@@ -6,7 +6,7 @@ import {$room} from "./api/$room";
 import {$tip} from "./api/$tip";
 import {$user} from "./api/$user";
 import {$settings} from "./api/$settings";
-import * as sharedCode from "./sharedCode";
+import "./sharedCode";
 
 
 

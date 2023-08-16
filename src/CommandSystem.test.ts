@@ -1,7 +1,8 @@
 import test from 'ava';
 import proxyquire from 'proxyquire';
 
-import { User } from "./api/$user";
+import {User} from "./api/$user";
+
 const $user: User = {username: 'Foo', colorGroup: 'f'} as User;
 
 const {CommandSystem, Command, Parameter} = proxyquire('./CommandSystem', {
@@ -42,7 +43,7 @@ test('CommandSystem checks user permissions correctly', t => {
 
     const parsed = system.parse('test restricted');
     t.false(parsed.valid);
-    t.is(parsed.error, 'You do not have permission to execute the restricted command.');
+    t.is(parsed.error, 'You do not have permission to execute the "restricted" command.');
 });
 
 test('CommandSystem executes commands correctly', t => {
@@ -75,7 +76,7 @@ test('CommandSystem parses commands with parameters correctly', t => {
 
 test('CommandSystem parses commands with options correctly', t => {
     const system = new CommandSystem('test');
-    const opt = new Parameter('loudly', false);
+    const opt = new Parameter('loudly', false, /.*/, true);
     const cmd = new Command('shout', 'Shout a message', [], (args, opts) => {
         const message = opts.loudly ? 'HELLO!' : 'Hello!';
         return { success: true, message };
@@ -94,7 +95,7 @@ test('Nested CommandSystem executes correctly', t => {
     const parentSystem = new CommandSystem('parent');
     const childSystem = new CommandSystem('child');
     const cmd = new Command('sayHi', 'Say hi', [], () => ({ success: true, message: 'Hi!' }));
-    
+
     childSystem.register(cmd);
     parentSystem.register(childSystem);
 

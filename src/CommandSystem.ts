@@ -1,4 +1,4 @@
-import { $user } from "./api/$user";
+import {$user} from "./api/$user";
 
 type TCommandHandler = (args: TObjectKV, opts: TObjectKV) => TCommandResult;
 type TObjectKV = Record<string, any>;
@@ -69,7 +69,7 @@ class Command {
             return this.handler(args, opts);
         } catch (error) {
             console.log(`Error executing command '${this.name}':`, error);
-            return { success: false, message: `An error occurred while executing the command.` };
+            return {success: false, message: `An error occurred while executing the command.`};
 
         }
     }
@@ -83,10 +83,10 @@ function matchByName(name: string, list: (TCommand | Parameter)[]): TMatch {
         if (possibilities.length === 1) {
             match = possibilities[0];
         } else if (possibilities.length > 1) {
-            return { error: `Ambiguous name, could be any of: ${possibilities.map(i => i.name).join(', ')}` };
+            return {error: `Ambiguous name, could be any of: ${possibilities.map(i => i.name).join(', ')}`};
         }
     }
-    return { match };
+    return {match};
 }
 
 class CommandSystem {
@@ -100,7 +100,7 @@ class CommandSystem {
         this.prefix = name;
         this.register(new Command(
             "help", "Displays a list of available commands or details about a specific command.",
-            [], (args) => ({ success: true, message: this.help(false, args.command) }), [], []
+            [], (args) => ({success: true, message: this.help(false, args.command)}), [], []
         ));
     }
 
@@ -133,16 +133,16 @@ class CommandSystem {
     }
 
     parse(commandString: string): TParsedCommand {
-        if (!commandString.startsWith(this.name)) {
-            throw new Error(`Invalid command prefix`);
-        }
-
-        const withoutPrefix = commandString.slice(this.name.length).trim();
-        const segments = withoutPrefix.match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) || [];
-        let commandName = segments[0] || "help";
-        let tokens = segments.slice(1).map(s => s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s);
-
         try {
+            if (!commandString.startsWith(this.name)) {
+                throw new Error('Invalid command prefix');
+            }
+
+            const withoutPrefix = commandString.slice(this.name.length).trim();
+            const segments = withoutPrefix.match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) || [];
+            let commandName = segments[0] || "help";
+            let tokens = segments.slice(1).map(s => s.startsWith('"') && s.endsWith('"') ? s.slice(1, -1) : s);
+
             let commandMatch = matchByName(commandName, Object.values(this.commands));
             if ('error' in commandMatch) {
                 throw new Error(commandMatch.error);
@@ -150,16 +150,16 @@ class CommandSystem {
 
             let command = commandMatch.match as TCommand;
             if (!command) {
-                throw new Error(`Unknown command ${commandName}`);
+                throw new Error(`Unknown command "${commandName}"`);
             }
 
             if (!this.hasPermission(command)) {
-                throw new Error(`You do not have permission to execute the ${commandName} command.`);
+                throw new Error(`You do not have permission to execute the "${commandName}" command.`);
             }
 
             if (command instanceof CommandSystem) {
                 return command.parse(withoutPrefix);
-            };
+            }
 
             let opts: TObjectKV = {};
             let args: TObjectKV = {};
@@ -168,28 +168,31 @@ class CommandSystem {
             for (let i = 0; i < tokens.length; i++) {
                 let token = tokens[i];
                 if (token.startsWith('-')) {
-                    let optName = token.slice(1);
+                    let optName = token.slice(token.startsWith('--') ? 2 : 1);
                     let optMatch = matchByName(optName, command.opts);
                     if ('error' in optMatch) {
                         throw new Error(optMatch.error);
                     }
 
                     let opt = optMatch.match as Parameter;
-
                     if (opt.isVarArgOrFlag) {
+                        opts[optName] = true;
+                    } else {
                         i++;
                         if (i >= tokens.length) {
-                            throw new Error(`Option ${optName} expects a value but none was provided.`);
-                        }
+                            throw new Error(`Option "${optName}" expects a value but none was provided.`);
 
+                        }
                         opts[optName] = tokens[i];
-                    } else {
-                        opts[optName] = true;
                     }
                 } else {
                     remainingTokens.push(token);
                 }
             }
+
+            command.opts
+                .filter(opt => opts[opt.name] === undefined)
+                .forEach(opt => opts[opt.name] = opt.defaultValue);
 
             if (remainingTokens.length > command.args.length) {
                 throw new Error(`Too many arguments provided. Expected ${command.args.length} but got ${remainingTokens.length}.`);
@@ -199,12 +202,12 @@ class CommandSystem {
                 let arg = command.args[i];
 
                 if (i >= remainingTokens.length && arg.defaultValue === undefined) {
-                    throw new Error(`Missing argument ${arg.name}.`);
+                    throw new Error(`Missing argument "${arg.name}".`);
                 }
 
                 if (i < remainingTokens.length) {
                     if (!arg.validate(remainingTokens[i])) {
-                        throw new Error(`Invalid value "${remainingTokens[i]}" for argument ${arg.name}.`);
+                        throw new Error(`Invalid value "${remainingTokens[i]}" for argument "${arg.name}".`);
                     }
                     args[arg.name] = remainingTokens[i];
                 } else {
@@ -212,9 +215,9 @@ class CommandSystem {
                 }
             }
 
-            return { valid: true, command: command, args, opts };
+            return {valid: true, command: command, args, opts};
         } catch (err) {
-            return { valid: false, error: err.message };
+            return {valid: false, error: err.message};
         }
     }
 
@@ -238,4 +241,4 @@ class CommandSystem {
 }
 
 
-export {CommandSystem, Command, Parameter, $user};
+export {CommandSystem, Command, Parameter, TCommandHandler};

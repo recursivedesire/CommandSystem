@@ -6,7 +6,7 @@ import {$media} from "./api/$media";
 import {$room} from "./api/$room";
 import {$user} from "./api/$user";
 import {$settings} from "./api/$settings";
-import * as sharedCode from "./sharedCode";
+import "./sharedCode";
 
 
 

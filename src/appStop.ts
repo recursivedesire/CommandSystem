@@ -4,7 +4,7 @@ import {$kv} from "./api/$kv";
 import {$limitcam} from "./api/$limitcam";
 import {$room} from "./api/$room";
 import {$settings} from "./api/$settings";
-import * as sharedCode from "./sharedCode";
+import "./sharedCode";
 
 
 

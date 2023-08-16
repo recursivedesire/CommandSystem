@@ -7,4 +7,4 @@ rm -rf test
 npx ava
 
 # Delete the test files
-rm -rf test
+#rm -rf test

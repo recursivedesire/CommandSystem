@@ -1,11 +1,21 @@
 import {$app} from "./api/$app";
-import {$kv} from "./api/$kv";
+import {$kv, KV} from "./api/$kv";
 import {$limitcam} from "./api/$limitcam";
-import {$room} from "./api/$room";
+import {$room, Room} from "./api/$room";
 import {$user} from "./api/$user";
 import {$settings} from "./api/$settings";
-import * as sharedCode from "./sharedCode";
+import "./sharedCode";
 
 
+// The logic of this file need to be wrapped in a function in order to be testable.
+function broadcastPanelUpdate($kv: KV, $room: Room) {
+  const panelTemplate = $kv.get("$room.panelTemplate", null);
+  if (panelTemplate !== null) {
+    $room.setPanelTemplate(JSON.parse(panelTemplate));
+  }
+}
 
-export {$kv, $limitcam, $room};
+broadcastPanelUpdate($kv, $room);
+
+
+export {broadcastPanelUpdate};

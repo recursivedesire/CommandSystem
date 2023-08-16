@@ -4,7 +4,7 @@ const babelParser = require('@babel/parser');
 const babelTransform = require("@babel/core").transform;
 
 module.exports = function (babel) {
-    const { types: t } = babel;
+    const {types: t} = babel;
 
     function inlineFileContent(filePath, relativeTo) {
         const currentFileExtension = nodePath.extname(relativeTo);
@@ -25,7 +25,7 @@ module.exports = function (babel) {
             const fileContent = fs.readFileSync(absolutePath, 'utf8');
             const transformed = babelTransform(fileContent, {
                 sourceType: "module",
-                plugins: [["@babel/plugin-syntax-typescript", { isTSX: false }], "./devportal-compat-plugin"]
+                plugins: [["@babel/plugin-syntax-typescript", {isTSX: false}], "./devportal-compat-plugin"]
             });
 
             if (transformed && transformed.code) {
@@ -56,15 +56,15 @@ module.exports = function (babel) {
                         ImportDeclaration(innerPath) {
                             const importPath = innerPath.node.source.value;
 
-                            // Check if the import has no specifiers and save for later
-                            if (innerPath.node.specifiers.length === 0) {
-                                state.fullInlines.push({ path: importPath, nodePath: innerPath });
+                            // Check if import has /api/ in its path or is named SharedCode[.js|.ts]
+                            if (importPath.includes('/api/') || /sharedCode(\.js|\.ts)?$/.test(importPath)) {
+                                state.nodesToBeRemoved.push(innerPath);  // Add to removal list
                                 return; // Skip the rest of the code for this import
                             }
 
-                            // Check if import has /api/ in its path or is named SharedCode[.js|.ts]
-                            if (importPath.includes('/api/') || /^sharedCode(\.js|\.ts)?$/.test(importPath)) {
-                                state.nodesToBeRemoved.push(innerPath);  // Add to removal list
+                            // Check if the import has no specifiers and save for later
+                            if (innerPath.node.specifiers.length === 0) {
+                                state.fullInlines.push({path: importPath, nodePath: innerPath});
                                 return; // Skip the rest of the code for this import
                             }
 
@@ -93,6 +93,7 @@ module.exports = function (babel) {
                     // Make replacements
                     state.inlineImports.forEach(inlineImport => {
                         if (!inlineImport.path.node) return;
+                        if (!state.file.opts.filename) return;
 
                         // Get the path of the imported file
                         const importPath = inlineImport.path.node.source.value;
