@@ -31,7 +31,7 @@ export declare class Room {
      * A string describing which users can chat in the room.
      * Possible values: all, tip_recent, tip_anytime, tokens
      */
-    readonly chatAllowedBy: string;
+    readonly chatAllowedBy: "all"|"tip_recent"|"tip_anytime"|"tokens";
     /** Price (in tokens) for joining the room's fanclub. */
     readonly fanclubPrice: number;
     /** Number of followers the room has. */
